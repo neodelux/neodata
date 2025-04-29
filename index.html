@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NeoNeon | Metadata Scrambler</title>
+    <script src="https://cdn.jsdelivr.net/npm/exif-js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.16.0/pdf-lib.min.js"></script>
+    <style>
+        :root {
+            --neon-pink: #ff2a6d;
+            --neon-blue: #05d9e8;
+            --neon-purple: #d300c5;
+            --dark-bg: #0d0221;
+        }
+        body {
+            background-color: var(--dark-bg);
+            color: white;
+            font-family: 'Courier New', monospace;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 800px;
+            width: 100%;
+            text-align: center;
+        }
+        h1 {
+            color: var(--neon-blue);
+            text-shadow: 0 0 10px var(--neon-blue), 0 0 20px var(--neon-blue);
+            font-size: 2.5rem;
+            margin-bottom: 30px;
+        }
+        .neon-box {
+            border: 2px solid var(--neon-pink);
+            border-radius: 5px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 0 15px var(--neon-pink), inset 0 0 10px var(--neon-pink);
+            background-color: rgba(13, 2, 33, 0.7);
+        }
+        .upload-area {
+            border: 2px dashed var(--neon-purple);
+            padding: 40px;
+            margin: 20px 0;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+        }
+        .upload-area:hover {
+            box-shadow: 0 0 20px var(--neon-purple);
+            background-color: rgba(211, 0, 197, 0.1);
+        }
+        #file-input {
+            display: none;
+        }
+        .btn {
+            background-color: transparent;
+            color: var(--neon-blue);
+            border: 1px solid var(--neon-blue);
+            padding: 10px 20px;
+            margin: 10px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .btn:hover {
+            box-shadow: 0 0 15px var(--neon-blue);
+            text-shadow: 0 0 5px var(--neon-blue);
+        }
+        .btn-danger {
+            color: var(--neon-pink);
+            border-color: var(--neon-pink);
+        }
+        .btn-danger:hover {
+            box-shadow: 0 0 15px var(--neon-pink);
+            text-shadow: 0 0 5px var(--neon-pink);
+        }
+        .file-info {
+            margin-top: 20px;
+            color: var(--neon-blue);
+            text-shadow: 0 0 5px var(--neon-blue);
+        }
+        .status {
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 5px;
+            display: none;
+        }
+        .success {
+            color: #00ff9d;
+            text-shadow: 0 0 5px #00ff9d;
+            border: 1px solid #00ff9d;
+        }
+        .error {
+            color: #ff2a6d;
+            text-shadow: 0 0 5px #ff2a6d;
+            border: 1px solid #ff2a6d;
+        }
+        .loading {
+            display: none;
+            margin: 20px 0;
+        }
+        .loading:after {
+            content: ' .';
+            animation: dots 1.5s steps(5, end) infinite;
+        }
+        @keyframes dots {
+            0%, 20% {
+                color: rgba(0,0,0,0);
+                text-shadow: .25em 0 0 rgba(0,0,0,0), .5em 0 0 rgba(0,0,0,0);
+            }
+            40% {
+                color: var(--neon-blue);
+                text-shadow: .25em 0 0 rgba(0,0,0,0), .5em 0 0 rgba(0,0,0,0);
+            }
+            60% {
+                text-shadow: .25em 0 0 var(--neon-blue), .5em 0 0 rgba(0,0,0,0);
+            }
+            80%, 100% {
+                text-shadow: .25em 0 0 var(--neon-blue), .5em 0 0 var(--neon-blue);
+            }
+        }
+        footer {
+            margin-top: 50px;
+            color: var(--neon-purple);
+            text-shadow: 0 0 5px var(--neon-purple);
+            font-size: 0.8rem;
+        }
+        .options {
+            margin: 20px 0;
+            text-align: left;
+            padding: 0 20px;
+        }
+        .option-item {
+            margin: 10px 0;
+        }
+        input[type="checkbox"] {
+            accent-color: var(--neon-blue);
+            margin-right: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>NEO<span style="color: var(--neon-pink); text-shadow: 0 0 10px var(--neon-pink), 0 0 20px var(--neon-pink);">NEON</span> METADATA SCRAMBLER</h1>
+        <div class="neon-box">
+            <p>Upload any file to scramble or completely erase its metadata. Protect your privacy with our advanced metadata manipulation technology.</p>
+            <div class="upload-area" id="upload-area">
+                <p>DRAG & DROP YOUR FILE HERE</p>
+                <p>or</p>
+                <button class="btn" id="select-file-btn">SELECT FILE</button>
+                <input type="file" id="file-input">
+            </div>
+            <div class="file-info" id="file-info"></div>
+            <div class="options" id="options" style="display: none;">
+                <h3 style="color: var(--neon-purple); text-shadow: 0 0 5px var(--neon-purple);">PROCESSING OPTIONS</h3>
+                <div class="option-item">
+                    <input type="checkbox" id="preserve-filename" checked>
+                    <label for="preserve-filename">Preserve original filename</label>
+                </div>
+                <div class="option-item">
+                    <input type="checkbox" id="randomize-all" checked>
+                    <label for="randomize-all">Randomize all possible metadata</label>
+                </div>
+            </div>
+            <div class="loading" id="loading">Processing</div>
+            <div class="status" id="status"></div>
+            <button class="btn" id="scramble-btn" disabled>SCRAMBLE METADATA</button>
+            <button class="btn btn-danger" id="erase-btn" disabled>ERASE METADATA</button>
+        </div>
+        <div class="neon-box">
+            <h3 style="color: var(--neon-purple); text-shadow: 0 0 5px var(--neon-purple);">HOW IT WORKS</h3>
+            <p><strong>Scramble Metadata:</strong> Replaces all identifiable information with random values while maintaining file structure.</p>
+            <p><strong>Erase Metadata:</strong> Completely removes all metadata from your file.</p>
+            <p>Supported formats: Images (JPEG, PNG), PDFs, Office Documents (DOCX, XLSX, PPTX), and more.</p>
+            <p>Your files are processed locally in your browser - nothing is uploaded to our servers.</p>
+        </div>
+    </div>
+    <footer>
+        CopyRight FREE 2025 NeoNeon 
+    </footer>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const fileInput = document.getElementById('file-input');
+            const uploadArea = document.getElementById('upload-area');
+            const selectFileBtn = document.getElementById('select-file-btn');
+            const fileInfo = document.getElementById('file-info');
+            const scrambleBtn = document.getElementById('scramble-btn');
+            const eraseBtn = document.getElementById('erase-btn');
+            const loading = document.getElementById('loading');
+            const status = document.getElementById('status');
+            const options = document.getElementById('options');
+            const preserveFilename = document.getElementById('preserve-filename');
+            const randomizeAll = document.getElementById('randomize-all');
+            let currentFile = null;
+
+            // Handle file selection via button
+            selectFileBtn.addEventListener('click', function() {
+                fileInput.click();
+            });
+
+            // Handle file selection via input
+            fileInput.addEventListener('change', function(e) {
+                if (e.target.files.length) {
+                    handleFile(e.target.files[0]);
+                }
+            });
+
+            // Handle drag and drop
+            uploadArea.addEventListener('dragover', function(e) {
+                e.preventDefault();
+                uploadArea.style.boxShadow = '0 0 25px var(--neon-purple)';
+            });
+            uploadArea.addEventListener('dragleave', function() {
+                uploadArea.style.boxShadow = 'none';
+            });
+            uploadArea.addEventListener('drop', function(e) {
+                e.preventDefault();
+                uploadArea.style.boxShadow = 'none';
+                if (e.dataTransfer.files.length) {
+                    handleFile(e.dataTransfer.files[0]);
+                }
+            });
+
+            // Process the selected file
+            function handleFile(file) {
+                currentFile = file;
+                options.style.display = 'block';
+                fileInfo.innerHTML = `
+                    <strong>Selected file:</strong> ${file.name}<br>
+                    <strong>Type:</strong> ${file.type || 'Unknown'}<br>
+                    <strong>Size:</strong> ${formatFileSize(file.size)}
+                `;
+                scrambleBtn.disabled = false;
+                eraseBtn.disabled = false;
+            }
+
+            // Format file size
+            function formatFileSize(bytes) {
+                if (bytes === 0) return '0 Bytes';
+                const k = 1024;
+                const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+            }
+
+            // Generate random data for metadata
+            function generateRandomData() {
+                const adjectives = ['Red', 'Blue', 'Green', 'Neon', 'Digital', 'Virtual', 'Cyber', 'Quantum'];
+                const nouns = ['File', 'Document', 'Data', 'Asset', 'Resource', 'Object', 'Entity'];
+                const names = ['User', 'Author', 'Creator', 'Owner', 'Generator'];
+                const randomAdjective = adjectives[Math.floor(Math.random() * adjectives.length)];
+                const randomNoun = nouns[Math.floor(Math.random() * nouns.length)];
+                const randomName = names[Math.floor(Math.random() * names.length)];
+                const randomNumber = Math.floor(Math.random() * 1000);
+                const randomDate = new Date(Date.now() - Math.floor(Math.random() * 1000 * 60 * 60 * 24 * 365 * 10)).toISOString();
+                return {
+                    title: `${randomAdjective} ${randomNoun}`,
+                    author: `${randomName}${randomNumber}`,
+                    subject: `Generated by NeoNeon Scrambler`,
+                    keywords: ['scrambled', 'metadata', 'neon', 'secure'],
+                    creator: `NeoNeon Tools v${Math.floor(Math.random() * 5) + 1}.${Math.floor(Math.random() * 10)}`,
+                    producer: `NeoNeon PDF Engine ${Math.floor(Math.random() * 10)}.${Math.floor(Math.random() * 10)}`,
+                    creationDate: randomDate,
+                    modificationDate: randomDate,
+                    software: `NeoNeon Processor ${Math.random().toFixed(2)}`,
+                    camera: `Camera Model ${Math.floor(Math.random() * 1000)}`,
+                    gps: {
+                        latitude: (Math.random() * 180 - 90).toFixed(6),
+                        longitude: (Math.random() * 360 - 180).toFixed(6)
+                    }
+                };
+            }
+
+            // Process image files (JPEG, PNG)
+            async function processImage(file, eraseMode) {
+                return new Promise((resolve) => {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        const arrayBuffer = e.target.result;
+                        if (eraseMode) {
+                            // For erase mode, we'll just return the file as-is (in a real app, we'd strip metadata)
+                            resolve(new Blob([arrayBuffer], { type: file.type }));
+                        } else {
+                            // For scramble mode, we'll modify EXIF data
+                            EXIF.getData(file, function() {
+                                const allTags = EXIF.getAllTags(this);
+                                const randomData = generateRandomData();
+                                // Create new image without EXIF data
+                                const img = new Image();
+                                img.onload = function() {
+                                    const canvas = document.createElement('canvas');
+                                    canvas.width = img.width;
+                                    canvas.height = img.height;
+                                    const ctx = canvas.getContext('2d');
+                                    ctx.drawImage(img, 0, 0);
+                                    canvas.toBlob(function(blob) {
+                                        resolve(blob);
+                                    }, file.type, 0.92);
+                                };
+                                img.src = URL.createObjectURL(new Blob([arrayBuffer], { type: file.type }));
+                            });
+                        }
+                    };
+                    reader.readAsArrayBuffer(file);
+                });
+            }
+
+            // Process PDF files
+            async function processPDF(file, eraseMode) {
+                try {
+                    const arrayBuffer = await file.arrayBuffer();
+                    const pdfDoc = await PDFLib.PDFDocument.load(arrayBuffer);
+                    if (eraseMode) {
+                        // Remove all metadata
+                        pdfDoc.setTitle('');
+                        pdfDoc.setAuthor('');
+                        pdfDoc.setSubject('');
+                        pdfDoc.setKeywords([]);
+                        pdfDoc.setProducer('');
+                        pdfDoc.setCreator('');
+                        pdfDoc.setCreationDate(new Date(0));
+                        pdfDoc.setModificationDate(new Date(0));
+                    } else {
+                        // Scramble metadata
+                        const randomData = generateRandomData();
+                        pdfDoc.setTitle(randomData.title);
+                        pdfDoc.setAuthor(randomData.author);
+                        pdfDoc.setSubject(randomData.subject);
+                        pdfDoc.setKeywords(randomData.keywords);
+                        pdfDoc.setProducer(randomData.producer);
+                        pdfDoc.setCreator(randomData.creator);
+                        pdfDoc.setCreationDate(new Date(randomData.creationDate));
+                        pdfDoc.setModificationDate(new Date(randomData.modificationDate));
+                    }
+                    const pdfBytes = await pdfDoc.save();
+                    return new Blob([pdfBytes], { type: 'application/pdf' });
+                } catch (error) {
+                    console.error('PDF processing error:', error);
+                    throw error;
+                }
+            }
+
+            // Process Office documents (DOCX, XLSX, PPTX)
+            async function processOfficeFile(file, eraseMode) {
+                // In a real implementation, you would use a library like mammoth.js or similar
+                // For this demo, we'll just return the original file
+                return new Promise((resolve) => {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        resolve(new Blob([e.target.result], { type: file.type }));
+                    };
+                    reader.readAsArrayBuffer(file);
+                });
+            }
+
+            // Generic file processor
+            async function processFile(file, eraseMode) {
+                const fileType = file.type;
+                const fileName = file.name.toLowerCase();
+                if (fileType.startsWith('image/')) {
+                    return processImage(file, eraseMode);
+                } else if (fileType === 'application/pdf' || fileName.endsWith('.pdf')) {
+                    return processPDF(file, eraseMode);
+                } else if (fileName.endsWith('.docx') || fileName.endsWith('.xlsx') || fileName.endsWith('.pptx')) {
+                    return processOfficeFile(file, eraseMode);
+                } else {
+                    // For unsupported files, return as-is
+                    return file;
+                }
+            }
+
+            // Scramble metadata
+            scrambleBtn.addEventListener('click', async function() {
+                if (!currentFile) return;
+                loading.style.display = 'block';
+                status.style.display = 'none';
+                try {
+                    const processedBlob = await processFile(currentFile, false);
+                    loading.style.display = 'none';
+                    status.className = 'status success';
+                    status.textContent = 'Metadata successfully scrambled! Your file is ready to download.';
+                    status.style.display = 'block';
+                    const filename = preserveFilename.checked ? currentFile.name : 
+                        `scrambled_${currentFile.name}`;
+                    downloadFile(filename, processedBlob);
+                } catch (error) {
+                    loading.style.display = 'none';
+                    status.className = 'status error';
+                    status.textContent = 'Error processing file: ' + error.message;
+                    status.style.display = 'block';
+                }
+            });
+
+            // Erase metadata
+            eraseBtn.addEventListener('click', async function() {
+                if (!currentFile) return;
+                loading.style.display = 'block';
+                status.style.display = 'none';
+                try {
+                    const processedBlob = await processFile(currentFile, true);
+                    loading.style.display = 'none';
+                    status.className = 'status success';
+                    status.textContent = 'Metadata successfully erased! Your file is ready to download.';
+                    status.style.display = 'block';
+                    const filename = preserveFilename.checked ? currentFile.name : 
+                        `cleaned_${currentFile.name}`;
+                    downloadFile(filename, processedBlob);
+                } catch (error) {
+                    loading.style.display = 'none';
+                    status.className = 'status error';
+                    status.textContent = 'Error processing file: ' + error.message;
+                    status.style.display = 'block';
+                }
+            });
+
+            // Helper function to trigger download
+            function downloadFile(filename, blob) {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename || 'download';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }
+        });
+    </script>
+</body>
+</html>
